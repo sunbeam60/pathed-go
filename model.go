@@ -1,0 +1,35 @@
+package main
+
+import tea "github.com/charmbracelet/bubbletea"
+
+type model struct {
+	paths      []pathEntry
+	cursor     int
+	offset     int
+	hOffset    int // horizontal scroll offset
+	viewHeight int
+	viewWidth  int
+	modal      *modal
+}
+
+func initialModel() model {
+	return model{
+		paths:      loadPaths(),
+		viewHeight: 20,
+		viewWidth:  80,
+	}
+}
+
+// hasModifications returns true if any path entry has been modified
+func (m model) hasModifications() bool {
+	for _, p := range m.paths {
+		if p.modified {
+			return true
+		}
+	}
+	return false
+}
+
+func (m model) Init() tea.Cmd {
+	return nil
+}

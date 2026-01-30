@@ -1,0 +1,28 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "go: build release",
+            "type": "process",
+            "command": "go",
+            "args": ["build", "-ldflags", "-s -w", "-o", "bin/pathed-go.exe", "."],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$go"],
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "go: build debug",
+            "type": "process",
+            "command": "go",
+            "args": ["build", "-gcflags", "all=-N -l", "-o", "bin/pathed-go.exe", "."],
+            "group": "build",
+            "problemMatcher": ["$go"]
+        }
+    ]
+}
