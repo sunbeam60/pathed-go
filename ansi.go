@@ -8,6 +8,9 @@ const (
 	ansiNoUnder   = "\x1b[24m"
 	ansiRed       = "\x1b[31m"
 	ansiGreen     = "\x1b[32m"
+	ansiBlue      = "\x1b[34m"
 	ansiBgWhite   = "\x1b[47m"
 	ansiBgGrey    = "\x1b[100m"
+	ansiBgRed     = "\x1b[101m"   // light red background
+	ansiBgGreen   = "\x1b[102m"   // light green background
 )

@@ -3,10 +3,32 @@
 package main
 
 import (
+	"os"
 	"strings"
 
 	"golang.org/x/sys/windows/registry"
 )
+
+const (
+	addHelpText        = "a/A: add user/system"
+	supportsSystemPath = true
+)
+
+// normalizePath returns a normalized path for duplicate comparison.
+// On Windows: case-insensitive, trailing backslashes removed.
+func normalizePath(path string) string {
+	// Remove trailing backslash (but keep root like "C:\")
+	for len(path) > 3 && (path[len(path)-1] == '\\' || path[len(path)-1] == '/') {
+		path = path[:len(path)-1]
+	}
+	return strings.ToLower(path)
+}
+
+// dirExists checks if a directory exists
+func dirExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
 
 func loadPaths() []pathEntry {
 	var entries []pathEntry
@@ -21,7 +43,7 @@ func loadPaths() []pathEntry {
 		if err == nil {
 			for _, p := range strings.Split(sysPath, ";") {
 				if p != "" {
-					entries = append(entries, pathEntry{path: p, source: "system"})
+					entries = append(entries, pathEntry{path: p, source: "system", exists: dirExists(p)})
 				}
 			}
 		}
@@ -37,7 +59,7 @@ func loadPaths() []pathEntry {
 		if err == nil {
 			for _, p := range strings.Split(userPath, ";") {
 				if p != "" {
-					entries = append(entries, pathEntry{path: p, source: "user"})
+					entries = append(entries, pathEntry{path: p, source: "user", exists: dirExists(p)})
 				}
 			}
 		}

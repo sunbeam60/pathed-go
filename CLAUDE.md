@@ -6,11 +6,11 @@ A spartan TUI PATH editor for Windows, built with Go and Bubble Tea.
 ## Building
 **Preferred**: Ask the user to build with `Ctrl+Shift+B` (VS Code build task).
 
-Output goes to `bin/pathed-go.exe` (gitignored).
+Output goes to `bin/pathed.exe` (gitignored).
 
 Manual command if needed:
 ```bash
-go build -ldflags "-s -w" -o bin/pathed-go.exe .
+go build -ldflags "-s -w" -o bin/pathed.exe .
 ```
 Always use `-ldflags "-s -w"` for release builds to strip debug info.
 
@@ -25,7 +25,7 @@ Source files at root (standard for small Go CLIs):
 - `model.go` - Application state (`model` struct)
 - `update.go` - Input handling and key bindings
 - `view.go` - Rendering logic
-- `modal.go` - Dialog component with own Update/View
+- `prompt.go` - Dialog component with own Update/View
 - `entry.go` - `pathEntry` struct
 - `ansi.go` - ANSI escape code constants
 - `paths_windows.go` / `paths_other.go` - Platform-specific PATH loading
@@ -42,7 +42,7 @@ Key concepts:
 - `PgUp`/`PgDn` or `Ctrl+U`/`Ctrl+D`: page up/down
 - `q`: quit (asks to save if modified)
 - `Ctrl+C`: force quit
-- In modals: `y`/`n` shortcuts, `Esc` to cancel
+- In prompts: `y`/`n` shortcuts, `Esc` to cancel
 
 ## Testing
 Run the built executable in Windows Terminal for proper ANSI support.

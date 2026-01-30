@@ -3,20 +3,20 @@ package main
 import tea "github.com/charmbracelet/bubbletea"
 
 type model struct {
-	paths      []pathEntry
-	cursor     int
-	offset     int
-	hOffset    int // horizontal scroll offset
-	viewHeight int
-	viewWidth  int
-	modal      *modal
+	paths     []pathEntry
+	list      listState
+	viewWidth int
+	prompt    *prompt
+	browser   *browser // directory browser for editing paths
 }
 
 func initialModel() model {
 	return model{
-		paths:      loadPaths(),
-		viewHeight: 20,
-		viewWidth:  80,
+		paths: loadPaths(),
+		list: listState{
+			viewHeight: 20,
+		},
+		viewWidth: 80,
 	}
 }
 

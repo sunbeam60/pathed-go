@@ -5,62 +5,84 @@ import "strings"
 func (m model) View() string {
 	var b strings.Builder
 
-	// Calculate visible range
-	end := m.offset + m.viewHeight
-	if end > len(m.paths) {
-		end = len(m.paths)
+	// If browser is active, render it instead of the path list
+	if m.browser != nil {
+		b.WriteString(m.browser.View(m.viewWidth))
+		helpBar := " Enter: open | a-z: jump | Tab: select | Esc: cancel"
+		if len(helpBar) > m.viewWidth {
+			helpBar = helpBar[:m.viewWidth-3] + "..."
+		}
+		b.WriteString(helpBar)
+		return b.String()
 	}
 
-	// Calculate scrollbar
-	scrollbar := m.renderScrollbar()
+	// Calculate visible range and scrollbar
+	start, end := m.list.VisibleRange(len(m.paths))
+	scrollbar := m.list.RenderScrollbar(len(m.paths))
 
 	// Render visible paths with scrollbar
-	for i := m.offset; i < end; i++ {
+	for i := start; i < end; i++ {
 		entry := m.paths[i]
 
-		// Build cursor/marker prefix: [modified marker][cursor]
+		// Build cursor/marker prefix: [modified marker][cursor/exists marker]
+		// Priority: deleted > added > modified
 		var prefix string
-		if entry.modified {
-			prefix = ansiRed + "*" + ansiReset // red asterisk
+		if entry.deleted {
+			prefix = ansiRed + "-" + ansiReset // red - for deleted entries
+		} else if entry.added {
+			prefix = ansiGreen + "+" + ansiReset // green + for added entries
+		} else if entry.modified {
+			prefix = ansiRed + "*" + ansiReset // red asterisk for modified
 		} else {
 			prefix = " "
 		}
-		if i == m.cursor {
-			prefix += ">"
+		if i == m.list.cursor {
+			if !entry.exists {
+				prefix += ansiBlue + ">" + ansiReset // blue cursor for non-existent
+			} else {
+				prefix += ">"
+			}
+		} else if !entry.exists {
+			prefix += ansiBlue + "?" + ansiReset // blue ? for non-existent paths
 		} else {
 			prefix += " "
 		}
 		path := entry.path
+		pathRunes := []rune(path)
+		pathLen := len(pathRunes)
 		// Available width for path content: total - cursor(2) - scrollbar(2) - possible markers(2)
 		contentWidth := m.viewWidth - 4 // cursor + scrollbar + space
 
-		// Apply horizontal offset
-		visiblePath := path
-		if m.hOffset > 0 {
-			if m.hOffset < len(path) {
-				visiblePath = path[m.hOffset:]
+		// Apply horizontal offset (in runes, not bytes)
+		var visibleRunes []rune
+		if m.list.hOffset > 0 {
+			if m.list.hOffset < pathLen {
+				visibleRunes = pathRunes[m.list.hOffset:]
 			} else {
-				visiblePath = ""
+				visibleRunes = nil
 			}
+		} else {
+			visibleRunes = pathRunes
 		}
 
 		// Determine if we need left/right markers
-		hasLeft := m.hOffset > 0 && len(path) > 0
+		hasLeft := m.list.hOffset > 0 && pathLen > 0
 
 		// Adjust content width for markers
 		displayWidth := contentWidth
 		if hasLeft {
 			displayWidth--
 		}
-		hasRight := len(visiblePath) > displayWidth
+		hasRight := len(visibleRunes) > displayWidth
 		if hasRight {
 			displayWidth--
 		}
 
-		// Truncate to display width
-		if len(visiblePath) > displayWidth {
-			visiblePath = visiblePath[:displayWidth]
+		// Truncate to display width (in runes)
+		if len(visibleRunes) > displayWidth {
+			visibleRunes = visibleRunes[:displayWidth]
 		}
+		visiblePath := string(visibleRunes)
 
 		// Build line with markers (green colored)
 		var line strings.Builder
@@ -68,17 +90,31 @@ func (m model) View() string {
 		if hasLeft {
 			line.WriteString(ansiGreen + "<" + ansiReset)
 		}
-		// System paths in bold white with dark grey background, user paths in regular white
-		if entry.source == "system" {
+		// Style based on state: deleted > added > normal
+		needsReset := false
+		if entry.deleted && entry.source == "system" {
+			line.WriteString(ansiRed + ansiBgRed) // red text, light red background
+			needsReset = true
+		} else if entry.deleted {
+			line.WriteString(ansiRed) // just red text for user entries
+			needsReset = true
+		} else if entry.added && entry.source == "system" {
+			line.WriteString(ansiGreen + ansiBgGreen) // green text, light green background
+			needsReset = true
+		} else if entry.added {
+			line.WriteString(ansiGreen) // just green text for user entries
+			needsReset = true
+		} else if entry.source == "system" {
 			line.WriteString(ansiBold + ansiBgGrey) // bold + dark grey background
+			needsReset = true
 		}
 		line.WriteString(visiblePath)
-		if entry.source == "system" {
-			line.WriteString(ansiReset) // reset
+		if needsReset {
+			line.WriteString(ansiReset)
 		}
 
 		// Pad to align right marker and scrollbar
-		currentLen := 2 + len(visiblePath) // cursor + content
+		currentLen := 2 + len(visibleRunes) // cursor + content (rune count)
 		if hasLeft {
 			currentLen++
 		}
@@ -94,7 +130,7 @@ func (m model) View() string {
 		}
 
 		// Add scrollbar character
-		scrollIdx := i - m.offset
+		scrollIdx := i - start
 		if scrollIdx < len(scrollbar) {
 			line.WriteString(" " + scrollbar[scrollIdx])
 		}
@@ -103,7 +139,7 @@ func (m model) View() string {
 	}
 
 	// Pad remaining lines if list is shorter than viewport
-	for i := end - m.offset; i < m.viewHeight; i++ {
+	for i := end - start; i < m.list.viewHeight; i++ {
 		scrollIdx := i
 		scrollChar := " "
 		if scrollIdx < len(scrollbar) {
@@ -112,50 +148,16 @@ func (m model) View() string {
 		b.WriteString(strings.Repeat(" ", m.viewWidth-1) + scrollChar + "\n")
 	}
 
-	// Help bar or modal
-	if m.modal != nil {
-		b.WriteString(m.modal.View())
+	// Help bar or prompt
+	if m.prompt != nil {
+		b.WriteString(m.prompt.View())
 	} else {
-		b.WriteString(" q: quit")
+		helpBar := " Tab: edit | " + addHelpText + " | c: clean | Del: delete | q: quit"
+		if len(helpBar) > m.viewWidth {
+			helpBar = helpBar[:m.viewWidth-3] + "..."
+		}
+		b.WriteString(helpBar)
 	}
 
 	return b.String()
-}
-
-func (m model) renderScrollbar() []string {
-	result := make([]string, m.viewHeight)
-
-	if m.viewHeight >= len(m.paths) {
-		// No scrollbar needed
-		for i := range result {
-			result[i] = " "
-		}
-		return result
-	}
-
-	// Calculate thumb size (minimum 1)
-	thumbSize := m.viewHeight * m.viewHeight / len(m.paths)
-	if thumbSize < 1 {
-		thumbSize = 1
-	}
-
-	// Calculate thumb position
-	scrollRange := len(m.paths) - m.viewHeight
-	thumbRange := m.viewHeight - thumbSize
-	thumbPos := 0
-	if scrollRange > 0 {
-		thumbPos = m.offset * thumbRange / scrollRange
-	}
-
-	// Build scrollbar with ANSI colors
-	for i := 0; i < m.viewHeight; i++ {
-		if i >= thumbPos && i < thumbPos+thumbSize {
-			// Bright white background for thumb
-			result[i] = ansiBgWhite + " " + ansiReset
-		} else {
-			// Dim grey background for track
-			result[i] = ansiBgGrey + " " + ansiReset
-		}
-	}
-	return result
 }

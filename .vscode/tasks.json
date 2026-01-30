@@ -5,7 +5,7 @@
             "label": "go: build release",
             "type": "process",
             "command": "go",
-            "args": ["build", "-ldflags", "-s -w", "-o", "bin/pathed-go.exe", "."],
+            "args": ["build", "-ldflags", "-s -w", "-o", "bin/pathed.exe", "."],
             "group": {
                 "kind": "build",
                 "isDefault": true
@@ -20,7 +20,7 @@
             "label": "go: build debug",
             "type": "process",
             "command": "go",
-            "args": ["build", "-gcflags", "all=-N -l", "-o", "bin/pathed-go.exe", "."],
+            "args": ["build", "-gcflags", "all=-N -l", "-o", "bin/pathed.exe", "."],
             "group": "build",
             "problemMatcher": ["$go"]
         }

@@ -1,0 +1,32 @@
+package main
+
+// Key bindings
+const (
+	keyQuit      = "q"
+	keyForceQuit = "ctrl+c"
+	keyUp        = "up"
+	keyUpAlt     = "k"
+	keyDown      = "down"
+	keyDownAlt   = "j"
+	keyLeft      = "left"
+	keyRight     = "right"
+	keyPgDown    = "pgdown"
+	keyPgDownAlt = "ctrl+d"
+	keyPgUp      = "pgup"
+	keyPgUpAlt   = "ctrl+u"
+	keyHome      = "home"
+	keyHomeAlt   = "g"
+	keyEnd       = "end"
+	keyEndAlt    = "G"
+	keyMoveUp    = "shift+up"
+	keyMoveUpAlt = "K"
+	keyMoveDn    = "shift+down"
+	keyMoveDnAlt = "J"
+	keyDelete    = "delete"
+	keyEnter     = "enter"
+	keyEsc       = "esc"
+	keySelect    = "tab"
+	keyAddUser   = "a"
+	keyAddSystem = "A"
+	keyClean     = "c"
+)
