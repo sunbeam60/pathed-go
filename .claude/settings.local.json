@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go version:*)",
+      "Bash(dlv:*)",
+      "Bash(go get:*)"
+    ]
+  }
+}
