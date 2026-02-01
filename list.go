@@ -95,11 +95,7 @@ func (l *listState) SetViewHeight(totalHeight, itemCount int) {
 		l.offset = maxOffset
 	}
 	// Ensure cursor stays visible after resize
-	if l.cursor < l.offset {
-		l.offset = l.cursor
-	} else if l.cursor >= l.offset+l.viewHeight {
-		l.offset = l.cursor - l.viewHeight + 1
-	}
+	l.EnsureVisible()
 }
 
 // TotalHeight returns the total height including header rows
@@ -111,6 +107,15 @@ func (l *listState) TotalHeight() int {
 func (l *listState) Reset() {
 	l.cursor = 0
 	l.offset = 0
+}
+
+// EnsureVisible adjusts offset so the cursor is visible
+func (l *listState) EnsureVisible() {
+	if l.cursor < l.offset {
+		l.offset = l.cursor
+	} else if l.cursor >= l.offset+l.viewHeight {
+		l.offset = l.cursor - l.viewHeight + 1
+	}
 }
 
 // VisibleRange returns the start and end indices of visible items

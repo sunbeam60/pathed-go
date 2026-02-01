@@ -148,11 +148,23 @@ func (m model) View() string {
 		b.WriteString(strings.Repeat(" ", m.viewWidth-1) + scrollChar + "\n")
 	}
 
+	// Warning if not elevated in registry mode
+	if m.registryMode && !m.elevated {
+		warning := ansiYellow + " Warning: Not running as Administrator - system PATH changes will fail" + ansiReset
+		b.WriteString(warning + "\n")
+	}
+
 	// Help bar or prompt
 	if m.prompt != nil {
 		b.WriteString(m.prompt.View())
 	} else {
-		helpBar := " Tab: edit | " + addHelpText + " | c: clean | Del: delete | q: quit"
+		var addHelp string
+		if m.registryMode {
+			addHelp = "a/A: add user/system"
+		} else {
+			addHelp = "a: add"
+		}
+		helpBar := " Tab: edit | " + addHelp + " | c: clean | Del: delete | q: quit"
 		if len(helpBar) > m.viewWidth {
 			helpBar = helpBar[:m.viewWidth-3] + "..."
 		}

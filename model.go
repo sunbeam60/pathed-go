@@ -3,27 +3,41 @@ package main
 import tea "github.com/charmbracelet/bubbletea"
 
 type model struct {
-	paths     []pathEntry
-	list      listState
-	viewWidth int
-	prompt    *prompt
-	browser   *browser // directory browser for editing paths
+	paths        []pathEntry
+	originalPath string // PATH at startup, for "don't save" case
+	list         listState
+	viewWidth    int
+	prompt       *prompt
+	browser      *browser // directory browser for editing paths
+	saveChanges  bool     // true if user chose to save changes
+	registryMode bool     // true when reading from Windows registry (system/user split)
+	elevated     bool     // true if running with administrator privileges (Windows)
 }
 
-func initialModel() model {
+func initialModel(registryMode bool) model {
+	var paths []pathEntry
+	if registryMode && supportsRegistry {
+		paths = loadPathsFromRegistry()
+	} else {
+		paths = loadPathsFromEnv()
+	}
+
 	return model{
-		paths: loadPaths(),
+		paths:        paths,
+		originalPath: buildPathString(paths),
 		list: listState{
 			viewHeight: 20,
 		},
-		viewWidth: 80,
+		viewWidth:    80,
+		registryMode: registryMode && supportsRegistry,
+		elevated:     isElevated(),
 	}
 }
 
-// hasModifications returns true if any path entry has been modified
+// hasModifications returns true if any path entry has been modified, deleted, or added
 func (m model) hasModifications() bool {
 	for _, p := range m.paths {
-		if p.modified {
+		if p.modified || p.deleted || p.added {
 			return true
 		}
 	}

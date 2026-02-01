@@ -1,9 +1,9 @@
 package main
 
-// pathEntry holds a path and its source (system or user)
+// pathEntry holds a path and its source
 type pathEntry struct {
 	path     string
-	source   string // "system" or "user"
+	source   string // "system", "user", or "" (env mode)
 	modified bool   // true if entry has been changed
 	deleted  bool   // true if entry is marked for deletion
 	added    bool   // true if entry was added in this session

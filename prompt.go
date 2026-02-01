@@ -27,7 +27,8 @@ func newPrompt(question string, options []string, onSelect func(index int) tea.C
 // Update handles input for the prompt and returns the result
 // Returns: updated prompt (nil if dismissed), tea.Cmd to execute, whether prompt was actioned
 func (p *prompt) Update(msg tea.KeyMsg) (*prompt, tea.Cmd, bool) {
-	switch msg.String() {
+	key := msg.String()
+	switch key {
 	case "left", "h":
 		if p.selected > 0 {
 			p.selected--
@@ -43,18 +44,19 @@ func (p *prompt) Update(msg tea.KeyMsg) (*prompt, tea.Cmd, bool) {
 		return nil, nil, true
 	case "esc":
 		return nil, nil, true
-	case "y":
-		// Shortcut for Yes (first option)
-		if p.onSelect != nil {
-			return nil, p.onSelect(0), true
+	default:
+		// Check if key matches first letter of any option (case-insensitive)
+		if len(key) == 1 {
+			keyLower := strings.ToLower(key)
+			for i, opt := range p.options {
+				if len(opt) > 0 && strings.ToLower(string(opt[0])) == keyLower {
+					if p.onSelect != nil {
+						return nil, p.onSelect(i), true
+					}
+					return nil, nil, true
+				}
+			}
 		}
-		return nil, nil, true
-	case "n":
-		// Shortcut for No (second option)
-		if len(p.options) > 1 && p.onSelect != nil {
-			return nil, p.onSelect(1), true
-		}
-		return nil, nil, true
 	}
 	return p, nil, false
 }

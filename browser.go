@@ -12,11 +12,12 @@ import (
 
 // browser represents a full-screen directory selector
 type browser struct {
-	currentDir   string
-	entries      []string // directory names only
-	list         listState
-	editingIndex int    // which path entry we're editing (-1 for add mode)
-	addSource    string // "user" or "system" when adding new entry (empty when editing)
+	currentDir    string
+	entries       []string // directory names only (or drive letters in drive mode)
+	list          listState
+	editingIndex  int    // which path entry we're editing (-1 for add mode)
+	addSource     string // "user" or "system" when adding new entry (empty when editing)
+	showingDrives bool   // true when showing drive selector (Windows only)
 }
 
 func newBrowser(startPath string, editingIndex int, height int) *browser {
@@ -100,14 +101,59 @@ func findFirstDrive() string {
 	return "C:\\"
 }
 
+// getAvailableDrives returns a list of available drive letters on Windows
+func getAvailableDrives() []string {
+	var drives []string
+	// Check C-Z first (most common)
+	for c := 'C'; c <= 'Z'; c++ {
+		drive := string(c) + ":\\"
+		if info, err := os.Stat(drive); err == nil && info.IsDir() {
+			drives = append(drives, string(c)+":")
+		}
+	}
+	// Check A and B (floppy drives, rare but possible)
+	for c := 'A'; c <= 'B'; c++ {
+		drive := string(c) + ":\\"
+		if info, err := os.Stat(drive); err == nil && info.IsDir() {
+			drives = append(drives, string(c)+":")
+		}
+	}
+	return drives
+}
+
+// isAtDriveRoot returns true if currentDir is a Windows drive root (e.g., "C:\")
+func isAtDriveRoot(path string) bool {
+	clean := filepath.Clean(path)
+	// Check if it's a drive root like "C:\"
+	if len(clean) == 3 && clean[1] == ':' && (clean[2] == '\\' || clean[2] == '/') {
+		return true
+	}
+	// Also handle "C:" without trailing slash
+	if len(clean) == 2 && clean[1] == ':' {
+		return true
+	}
+	return false
+}
+
 func (b *browser) loadEntries() {
 	b.entries = nil
 	b.list.Reset()
 
-	// Add parent directory option if not at root (do this first so user can always navigate back)
+	if b.showingDrives {
+		// Show available drives
+		b.entries = getAvailableDrives()
+		return
+	}
+
+	// Add parent directory option - on Windows at drive root, this will go to drive list
 	if filepath.Dir(b.currentDir) != b.currentDir {
+		// Not at root, normal parent navigation
+		b.entries = append(b.entries, "..")
+	} else if isAtDriveRoot(b.currentDir) {
+		// At drive root on Windows, ".." goes to drive selector
 		b.entries = append(b.entries, "..")
 	}
+	// On Unix at "/", no ".." entry (true root)
 
 	entries, err := os.ReadDir(b.currentDir)
 	if err != nil {
@@ -153,26 +199,46 @@ func (b *browser) Update(msg tea.KeyMsg) (*browser, tea.Cmd, string) {
 		b.list.End(len(b.entries))
 
 	case keyEnter:
-		// Descend into selected directory
+		// Descend into selected directory or select drive
 		if len(b.entries) > 0 {
 			selected := b.entries[b.list.cursor]
-			if selected == ".." {
-				// Remember the directory we're leaving
-				exitedDir := filepath.Base(filepath.Clean(b.currentDir))
-				// Go up to parent
-				b.currentDir = filepath.Dir(filepath.Clean(b.currentDir))
+
+			if b.showingDrives {
+				// Drive selected - switch to that drive's root
+				b.currentDir = selected + "\\"
+				b.showingDrives = false
 				b.loadEntries()
-				// Find and select the directory we just exited
-				for i, entry := range b.entries {
-					if entry == exitedDir {
-						b.list.cursor = i
-						// Ensure cursor is visible
-						if b.list.cursor >= b.list.viewHeight {
-							b.list.offset = b.list.cursor - b.list.viewHeight + 1
+				return b, nil, ""
+			}
+
+			if selected == ".." {
+				if isAtDriveRoot(b.currentDir) {
+					// At drive root, switch to drive selector
+					currentDrive := strings.ToUpper(string(b.currentDir[0])) + ":"
+					b.showingDrives = true
+					b.loadEntries()
+					// Select the drive we came from
+					for i, entry := range b.entries {
+						if entry == currentDrive {
+							b.list.cursor = i
+							break
 						}
-						break
+					}
+				} else {
+					// Remember the directory we're leaving
+					exitedDir := filepath.Base(filepath.Clean(b.currentDir))
+					// Go up to parent
+					b.currentDir = filepath.Dir(filepath.Clean(b.currentDir))
+					b.loadEntries()
+					// Find and select the directory we just exited
+					for i, entry := range b.entries {
+						if entry == exitedDir {
+							b.list.cursor = i
+							break
+						}
 					}
 				}
+				b.list.EnsureVisible()
 			} else {
 				b.currentDir = filepath.Join(b.currentDir, selected)
 				b.loadEntries()
@@ -180,7 +246,11 @@ func (b *browser) Update(msg tea.KeyMsg) (*browser, tea.Cmd, string) {
 		}
 
 	case keySelect:
-		// Select current directory
+		// Select current directory (or drive root in drive mode)
+		if b.showingDrives && len(b.entries) > 0 {
+			// Select the highlighted drive's root
+			return nil, nil, b.entries[b.list.cursor] + "\\"
+		}
 		return nil, nil, b.currentDir
 
 	case keyEsc:
@@ -191,37 +261,42 @@ func (b *browser) Update(msg tea.KeyMsg) (*browser, tea.Cmd, string) {
 		// Jump to entry starting with pressed letter (a-z), cycling through matches
 		key := msg.String()
 		if len(key) == 1 && key[0] >= 'a' && key[0] <= 'z' {
-			// Find all entries starting with this letter
-			var matches []int
-			for i, entry := range b.entries {
-				if entry == ".." {
-					continue
-				}
-				entryLower := strings.ToLower(entry)
-				if len(entryLower) > 0 && entryLower[0] == key[0] {
-					matches = append(matches, i)
-				}
-			}
-
-			if len(matches) > 0 {
-				// Find current position in matches (if any)
-				nextIdx := 0
-				for i, idx := range matches {
-					if idx == b.list.cursor {
-						// Currently on a match, move to next (wrap around)
-						nextIdx = (i + 1) % len(matches)
+			if b.showingDrives {
+				// In drive mode, jump directly to the drive letter
+				driveLetter := strings.ToUpper(key) + ":"
+				for i, entry := range b.entries {
+					if entry == driveLetter {
+						b.list.cursor = i
 						break
 					}
 				}
-				b.list.cursor = matches[nextIdx]
+			} else {
+				// Find all entries starting with this letter
+				var matches []int
+				for i, entry := range b.entries {
+					if entry == ".." {
+						continue
+					}
+					entryLower := strings.ToLower(entry)
+					if len(entryLower) > 0 && entryLower[0] == key[0] {
+						matches = append(matches, i)
+					}
+				}
 
-				// Ensure cursor is visible
-				if b.list.cursor < b.list.offset {
-					b.list.offset = b.list.cursor
-				} else if b.list.cursor >= b.list.offset+b.list.viewHeight {
-					b.list.offset = b.list.cursor - b.list.viewHeight + 1
+				if len(matches) > 0 {
+					// Find current position in matches (if any)
+					nextIdx := 0
+					for i, idx := range matches {
+						if idx == b.list.cursor {
+							// Currently on a match, move to next (wrap around)
+							nextIdx = (i + 1) % len(matches)
+							break
+						}
+					}
+					b.list.cursor = matches[nextIdx]
 				}
 			}
+			b.list.EnsureVisible()
 		}
 	}
 
@@ -232,8 +307,13 @@ func (b *browser) Update(msg tea.KeyMsg) (*browser, tea.Cmd, string) {
 func (b *browser) View(viewWidth int) string {
 	var sb strings.Builder
 
-	// Header showing current directory
-	header := "Select directory: " + b.currentDir
+	// Header
+	var header string
+	if b.showingDrives {
+		header = "Select drive:"
+	} else {
+		header = "Select directory: " + b.currentDir
+	}
 	if len(header) > viewWidth-1 {
 		header = header[:viewWidth-4] + "..."
 	}

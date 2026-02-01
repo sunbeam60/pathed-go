@@ -3,6 +3,10 @@
 ## Project Overview
 A spartan TUI PATH editor for Windows, built with Go and Bubble Tea.
 
+## Working together
+If the user is asking questions about a problem or approach, aim to first discuss the problem/approach with the user before you start making changes. If you now understand the intent from the user, please confirm that they are ready to make changes.
+Once an approach has been chosen, it's ok to make changes necessary for that approach, but when a problem domain changes, the user prefers a discussion about approach before you start making changes again.
+
 ## Building
 **Preferred**: Ask the user to build with `Ctrl+Shift+B` (VS Code build task).
 
@@ -18,6 +22,7 @@ Always use `-ldflags "-s -w"` for release builds to strip debug info.
 - Keep the UI minimal/spartan - no unnecessary styling
 - Use ANSI escape codes directly for colors (e.g., `\x1b[32m` for green)
 - Avoid Unicode box-drawing characters - they don't render reliably on Windows terminals
+- Any error messages we return to the user should use good grammer; start with capital, finish with a full stop etc.
 
 ## Architecture
 Source files at root (standard for small Go CLIs):
@@ -48,4 +53,4 @@ Key concepts:
 Run the built executable in Windows Terminal for proper ANSI support.
 
 ## Safety
-Any code that is written to actually modify the path should be commented out for safaty. So the code should be written, but not actually be compiled and run for now.
+Any code that is written to actually modify the path should be commented out for safety. So the code should be written, but not actually be compiled and run for now.
