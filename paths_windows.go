@@ -107,7 +107,13 @@ func savePaths(paths []pathEntry) error {
 	}
 
 	// Write user PATH if changed
-	return saveUserPath(newUserPath)
+	if err := saveUserPath(newUserPath); err != nil {
+		return err
+	}
+
+	// Notify other applications that environment has changed
+	broadcastEnvironmentChange()
+	return nil
 }
 
 // writeRegistryPathIfChanged compares current value and writes if different
@@ -160,4 +166,30 @@ func saveUserPath(newPath string) error {
 	defer userKey.Close()
 
 	return writeRegistryPathIfChanged(userKey, newPath, "user")
+}
+
+// broadcastEnvironmentChange notifies all windows that environment variables have changed.
+// This allows Explorer and other apps to pick up PATH changes without restart.
+func broadcastEnvironmentChange() {
+	user32 := syscall.NewLazyDLL("user32.dll")
+	sendMessageTimeout := user32.NewProc("SendMessageTimeoutW")
+
+	// WM_SETTINGCHANGE = 0x001A, HWND_BROADCAST = 0xFFFF
+	// SMTO_ABORTIFHUNG = 0x0002
+	const (
+		HWND_BROADCAST   = 0xFFFF
+		WM_SETTINGCHANGE = 0x001A
+		SMTO_ABORTIFHUNG = 0x0002
+	)
+
+	envStr, _ := syscall.UTF16PtrFromString("Environment")
+	sendMessageTimeout.Call(
+		uintptr(HWND_BROADCAST),
+		uintptr(WM_SETTINGCHANGE),
+		0,
+		uintptr(unsafe.Pointer(envStr)),
+		uintptr(SMTO_ABORTIFHUNG),
+		uintptr(5000), // 5 second timeout
+		0,
+	)
 }

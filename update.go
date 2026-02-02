@@ -31,9 +31,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			height = 1
 		}
 		m.list.SetViewHeight(height, len(m.paths))
-		// Also update browser's list state if active (headerRows handles the header)
+		// Also update browser's or help view's list state if active
 		if m.browser != nil {
 			m.browser.list.SetViewHeight(height, len(m.browser.entries))
+		}
+		if m.helpView != nil {
+			m.helpView.list.SetViewHeight(height, len(m.helpView.lines))
 		}
 		return m, nil
 
@@ -49,6 +52,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case tea.KeyMsg:
+		if m.helpView != nil {
+			return m.updateHelpView(msg)
+		}
 		if m.browser != nil {
 			return m.updateBrowser(msg)
 		}
@@ -65,6 +71,11 @@ func (m model) updatePrompt(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	newPrompt, cmd, _ := m.prompt.Update(msg)
 	m.prompt = newPrompt
 	return m, cmd
+}
+
+func (m model) updateHelpView(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	m.helpView = m.helpView.Update(msg)
+	return m, nil
 }
 
 func (m model) updateBrowser(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -240,6 +251,9 @@ func (m model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			seen[p.source][normalizedPath] = true
 		}
+
+	case keyHelp, keyHelpAlt:
+		m.helpView = newHelpView(m.list.TotalHeight())
 	}
 	return m, nil
 }

@@ -9,13 +9,57 @@ type listState struct {
 	headerRows int // rows of chrome above the list (subtracted from total height)
 }
 
+// Scroll functions (cursorless, direct offset manipulation)
+
+// ScrollUp scrolls the view up by one line
+func (l *listState) ScrollUp() {
+	if l.offset > 0 {
+		l.offset--
+	}
+}
+
+// ScrollDown scrolls the view down by one line
+func (l *listState) ScrollDown(itemCount int) {
+	maxOffset := max(0, itemCount-l.viewHeight)
+	if l.offset < maxOffset {
+		l.offset++
+	}
+}
+
+// ScrollPageUp scrolls the view up by one page
+func (l *listState) ScrollPageUp() {
+	l.offset -= l.viewHeight
+	if l.offset < 0 {
+		l.offset = 0
+	}
+}
+
+// ScrollPageDown scrolls the view down by one page
+func (l *listState) ScrollPageDown(itemCount int) {
+	maxOffset := max(0, itemCount-l.viewHeight)
+	l.offset += l.viewHeight
+	if l.offset > maxOffset {
+		l.offset = maxOffset
+	}
+}
+
+// ScrollHome scrolls to the top
+func (l *listState) ScrollHome() {
+	l.offset = 0
+}
+
+// ScrollEnd scrolls to the bottom
+func (l *listState) ScrollEnd(itemCount int) {
+	l.offset = max(0, itemCount-l.viewHeight)
+}
+
+// Cursor movement functions (use EnsureVisible for offset adjustment)
+
 // MoveUp moves the cursor up one item
 func (l *listState) MoveUp() {
 	if l.cursor > 0 {
 		l.cursor--
-		if l.cursor < l.offset {
-			l.offset = l.cursor
-		}
+		l.EnsureVisible()
 	}
 }
 
@@ -23,9 +67,7 @@ func (l *listState) MoveUp() {
 func (l *listState) MoveDown(itemCount int) {
 	if l.cursor < itemCount-1 {
 		l.cursor++
-		if l.cursor >= l.offset+l.viewHeight {
-			l.offset = l.cursor - l.viewHeight + 1
-		}
+		l.EnsureVisible()
 	}
 }
 
@@ -35,9 +77,7 @@ func (l *listState) PageUp() {
 	if l.cursor < 0 {
 		l.cursor = 0
 	}
-	if l.cursor < l.offset {
-		l.offset = l.cursor
-	}
+	l.EnsureVisible()
 }
 
 // PageDown moves the cursor down by one page
@@ -46,9 +86,7 @@ func (l *listState) PageDown(itemCount int) {
 	if l.cursor >= itemCount {
 		l.cursor = itemCount - 1
 	}
-	if l.cursor >= l.offset+l.viewHeight {
-		l.offset = l.cursor - l.viewHeight + 1
-	}
+	l.EnsureVisible()
 }
 
 // Home moves the cursor to the first item
@@ -60,8 +98,7 @@ func (l *listState) Home() {
 // End moves the cursor to the last item
 func (l *listState) End(itemCount int) {
 	l.cursor = itemCount - 1
-	maxOffset := max(0, itemCount-l.viewHeight)
-	l.offset = maxOffset
+	l.offset = max(0, itemCount-l.viewHeight)
 }
 
 // ScrollLeft scrolls the view left

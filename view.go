@@ -55,7 +55,7 @@ func renderHelpBar(registryMode bool, width int) string {
 	} else {
 		addHelp = "a: add"
 	}
-	helpBar := " Tab: edit | " + addHelp + " | c: clean | Del: delete | q: quit"
+	helpBar := " Tab: edit | " + addHelp + " | c: clean | Del: delete | q: quit | ?: help"
 	if len(helpBar) > width {
 		helpBar = helpBar[:width-3] + "..."
 	}
@@ -64,6 +64,17 @@ func renderHelpBar(registryMode bool, width int) string {
 
 func (m model) View() string {
 	var b strings.Builder
+
+	// If help view is active, render it instead of the path list
+	if m.helpView != nil {
+		b.WriteString(m.helpView.View(m.viewWidth))
+		helpBar := " Arrows/PgUp/PgDn: scroll | Esc/h/?: close"
+		if len(helpBar) > m.viewWidth {
+			helpBar = helpBar[:m.viewWidth-3] + "..."
+		}
+		b.WriteString(helpBar)
+		return b.String()
+	}
 
 	// If browser is active, render it instead of the path list
 	if m.browser != nil {

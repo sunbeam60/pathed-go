@@ -8,10 +8,11 @@ type model struct {
 	list         listState
 	viewWidth    int
 	prompt       *prompt
-	browser      *browser // directory browser for editing paths
-	saveChanges  bool     // true if user chose to save changes
-	registryMode bool     // true when reading from Windows registry (system/user split)
-	elevated     bool     // true if running with administrator privileges (Windows)
+	browser      *browser  // directory browser for editing paths
+	helpView     *helpView // help screen
+	saveChanges  bool      // true if user chose to save changes
+	registryMode bool      // true when reading from Windows registry (system/user split)
+	elevated     bool      // true if running with administrator privileges (Windows)
 }
 
 func initialModel(registryMode bool) model {

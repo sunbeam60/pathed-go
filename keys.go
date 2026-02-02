@@ -29,4 +29,6 @@ const (
 	keyAddUser   = "a"
 	keyAddSystem = "A"
 	keyClean     = "c"
+	keyHelp      = "?"
+	keyHelpAlt   = "h"
 )
