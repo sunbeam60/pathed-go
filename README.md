@@ -2,7 +2,7 @@
 
 A spartan TUI for editing your PATH environment variable.
 
-![pathed screenshot](https://github.com/sunbeam60/pathed-go/assets/screenshot.png)
+![pathed screenshot](https://github.com/user-attachments/assets/43815fb6-355c-4069-84f2-560dd49a6881)
 
 ## Features
 
