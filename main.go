@@ -7,6 +7,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// version is set via ldflags at build time
+var version = "dev"
+
 const helpText = `pathed - Interactive PATH environment editor
 
 USAGE:
@@ -14,6 +17,7 @@ USAGE:
 
 OPTIONS:
     -h, --help        Show this help message
+    -v, --version     Show version
     -r, --registry    Read from and write to Windows registry (Windows only)
 
 DESCRIPTION:
@@ -73,6 +77,9 @@ func main() {
 		switch arg {
 		case "-h", "--help":
 			fmt.Print(helpText)
+			return
+		case "-v", "--version":
+			fmt.Println(version)
 			return
 		case "-r", "--registry":
 			if !supportsRegistry {
