@@ -1,0 +1,48 @@
+version: 2
+
+project_name: pathed
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: pathed
+    binary: pathed
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+
+archives:
+  - id: default
+    formats:
+      - zip
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - Merge pull request
+      - Merge branch
+
+release:
+  github:
+    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
+    name: pathed-go
+  draft: false
+  prerelease: auto
