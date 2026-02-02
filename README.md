@@ -2,13 +2,11 @@
 
 A spartan TUI for editing your PATH environment variable.
 
+![pathed screenshot](https://github.com/user-attachments/assets/43815fb6-355c-4069-84f2-560dd49a6881)
+
 ⚠️ On Windows, this tool can make permanent and undoable changes to your registry. 
 
 ⚠️ While it's been tested and seems to work, you could screw up your computer when running with -r/--registry.
-
-⚠️ If you want to run with belt and braces, best to backup your machine patj and user path before persisting registry changes.
-
-![pathed screenshot](https://github.com/user-attachments/assets/43815fb6-355c-4069-84f2-560dd49a6881)
 
 ## Features
 
@@ -78,7 +76,7 @@ pathed -r
 
 - Shows system PATH (from HKLM) and user PATH (from HKCU) separately
 - Changes are persisted directly to the registry
-- Run as Administrator to modify system PATH
+- Run as Administrator (sudo pathed -r) to persist changes to system path.
 
 ## Key Bindings
 
