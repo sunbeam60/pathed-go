@@ -21,7 +21,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.viewWidth = msg.Width
-		height := msg.Height - 1 // subtract 1 for help bar
+		// Subtract lines for: help bar (1) + warning if not elevated in registry mode (1)
+		reservedLines := 1
+		if m.registryMode && !m.elevated {
+			reservedLines = 2
+		}
+		height := msg.Height - reservedLines
 		if height < 1 {
 			height = 1
 		}

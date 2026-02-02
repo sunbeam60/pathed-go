@@ -258,12 +258,25 @@ func (b *browser) Update(msg tea.KeyMsg) (*browser, tea.Cmd, string) {
 		return nil, nil, ""
 
 	default:
-		// Jump to entry starting with pressed letter (a-z), cycling through matches
+		// Jump to entry starting with pressed letter
+		// a-z: forward cycling, A-Z (shift): backward cycling
 		key := msg.String()
-		if len(key) == 1 && key[0] >= 'a' && key[0] <= 'z' {
+		if len(key) == 1 {
+			var letter byte
+			var backward bool
+			if key[0] >= 'a' && key[0] <= 'z' {
+				letter = key[0]
+				backward = false
+			} else if key[0] >= 'A' && key[0] <= 'Z' {
+				letter = key[0] + 32 // Convert to lowercase
+				backward = true
+			} else {
+				return b, nil, ""
+			}
+
 			if b.showingDrives {
 				// In drive mode, jump directly to the drive letter
-				driveLetter := strings.ToUpper(key) + ":"
+				driveLetter := strings.ToUpper(string(letter)) + ":"
 				for i, entry := range b.entries {
 					if entry == driveLetter {
 						b.list.cursor = i
@@ -278,22 +291,35 @@ func (b *browser) Update(msg tea.KeyMsg) (*browser, tea.Cmd, string) {
 						continue
 					}
 					entryLower := strings.ToLower(entry)
-					if len(entryLower) > 0 && entryLower[0] == key[0] {
+					if len(entryLower) > 0 && entryLower[0] == letter {
 						matches = append(matches, i)
 					}
 				}
 
 				if len(matches) > 0 {
-					// Find current position in matches (if any)
-					nextIdx := 0
-					for i, idx := range matches {
-						if idx == b.list.cursor {
-							// Currently on a match, move to next (wrap around)
-							nextIdx = (i + 1) % len(matches)
-							break
+					if backward {
+						// Find current position in matches (if any)
+						prevIdx := len(matches) - 1 // Default to last match
+						for i, idx := range matches {
+							if idx == b.list.cursor {
+								// Currently on a match, move to previous (wrap around)
+								prevIdx = (i - 1 + len(matches)) % len(matches)
+								break
+							}
 						}
+						b.list.cursor = matches[prevIdx]
+					} else {
+						// Find current position in matches (if any)
+						nextIdx := 0
+						for i, idx := range matches {
+							if idx == b.list.cursor {
+								// Currently on a match, move to next (wrap around)
+								nextIdx = (i + 1) % len(matches)
+								break
+							}
+						}
+						b.list.cursor = matches[nextIdx]
 					}
-					b.list.cursor = matches[nextIdx]
 				}
 			}
 			b.list.EnsureVisible()

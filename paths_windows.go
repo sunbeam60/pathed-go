@@ -5,7 +5,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 	"syscall"
 	"unsafe"
@@ -35,17 +34,6 @@ func isElevated() bool {
 	return elevation != 0
 }
 
-// buildPathString constructs the PATH string from entries (excluding deleted)
-func buildPathString(paths []pathEntry) string {
-	var parts []string
-	for _, p := range paths {
-		if !p.deleted {
-			parts = append(parts, p.path)
-		}
-	}
-	return strings.Join(parts, ";")
-}
-
 // normalizePath returns a normalized path for duplicate comparison.
 // On Windows: case-insensitive, trailing backslashes removed.
 func normalizePath(path string) string {
@@ -54,24 +42,6 @@ func normalizePath(path string) string {
 		path = path[:len(path)-1]
 	}
 	return strings.ToLower(path)
-}
-
-// dirExists checks if a directory exists
-func dirExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && info.IsDir()
-}
-
-// loadPathsFromEnv reads PATH from the process environment (no system/user distinction)
-func loadPathsFromEnv() []pathEntry {
-	var entries []pathEntry
-	pathEnv := os.Getenv("PATH")
-	for _, p := range strings.Split(pathEnv, ";") {
-		if p != "" {
-			entries = append(entries, pathEntry{path: p, source: "", exists: dirExists(p)})
-		}
-	}
-	return entries
 }
 
 // loadPathsFromRegistry reads PATH from Windows registry with system/user distinction
@@ -140,24 +110,36 @@ func savePaths(paths []pathEntry) error {
 	return saveUserPath(newUserPath)
 }
 
+// writeRegistryPathIfChanged compares current value and writes if different
+func writeRegistryPathIfChanged(key registry.Key, newPath, desc string) error {
+	currentPath, _, _ := key.GetStringValue("Path")
+	if currentPath == newPath {
+		return nil
+	}
+	if err := key.SetStringValue("Path", newPath); err != nil {
+		if errors.Is(err, syscall.ERROR_ACCESS_DENIED) {
+			return fmt.Errorf("access denied: run as Administrator to modify %s PATH", desc)
+		}
+		return fmt.Errorf("failed to write %s PATH: %w", desc, err)
+	}
+	return nil
+}
+
 // saveSystemPath writes the system PATH if it has changed
 func saveSystemPath(newPath string) error {
+	const subKey = `SYSTEM\CurrentControlSet\Control\Session Manager\Environment`
+
 	// Try to open with write access
-	sysKey, err := registry.OpenKey(registry.LOCAL_MACHINE,
-		`SYSTEM\CurrentControlSet\Control\Session Manager\Environment`,
-		registry.QUERY_VALUE|registry.SET_VALUE)
+	sysKey, err := registry.OpenKey(registry.LOCAL_MACHINE, subKey, registry.QUERY_VALUE|registry.SET_VALUE)
 	if err != nil {
 		if errors.Is(err, syscall.ERROR_ACCESS_DENIED) {
 			// No write access - check if we even need to write
-			sysKeyRO, errRO := registry.OpenKey(registry.LOCAL_MACHINE,
-				`SYSTEM\CurrentControlSet\Control\Session Manager\Environment`,
-				registry.QUERY_VALUE)
+			sysKeyRO, errRO := registry.OpenKey(registry.LOCAL_MACHINE, subKey, registry.QUERY_VALUE)
 			if errRO == nil {
 				currentPath, _, _ := sysKeyRO.GetStringValue("Path")
 				sysKeyRO.Close()
 				if currentPath == newPath {
-					// No change needed, skip
-					return nil
+					return nil // No change needed, skip
 				}
 			}
 			return fmt.Errorf("access denied: run as Administrator to modify system PATH")
@@ -166,34 +148,16 @@ func saveSystemPath(newPath string) error {
 	}
 	defer sysKey.Close()
 
-	// Read current value and only write if different
-	currentPath, _, _ := sysKey.GetStringValue("Path")
-	if currentPath != newPath {
-		if err := sysKey.SetStringValue("Path", newPath); err != nil {
-			if errors.Is(err, syscall.ERROR_ACCESS_DENIED) {
-				return fmt.Errorf("access denied: run as Administrator to modify system PATH")
-			}
-			return fmt.Errorf("failed to write system PATH: %w", err)
-		}
-	}
-	return nil
+	return writeRegistryPathIfChanged(sysKey, newPath, "system")
 }
 
 // saveUserPath writes the user PATH if it has changed
 func saveUserPath(newPath string) error {
-	userKey, err := registry.OpenKey(registry.CURRENT_USER,
-		`Environment`, registry.QUERY_VALUE|registry.SET_VALUE)
+	userKey, err := registry.OpenKey(registry.CURRENT_USER, `Environment`, registry.QUERY_VALUE|registry.SET_VALUE)
 	if err != nil {
 		return fmt.Errorf("failed to open user PATH key: %w", err)
 	}
 	defer userKey.Close()
 
-	// Read current value and only write if different
-	currentPath, _, _ := userKey.GetStringValue("Path")
-	if currentPath != newPath {
-		if err := userKey.SetStringValue("Path", newPath); err != nil {
-			return fmt.Errorf("failed to write user PATH: %w", err)
-		}
-	}
-	return nil
+	return writeRegistryPathIfChanged(userKey, newPath, "user")
 }

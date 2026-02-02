@@ -2,13 +2,73 @@ package main
 
 import "strings"
 
+// renderEntryPrefix returns the 2-character prefix for a path entry (state marker + cursor/exists marker)
+func renderEntryPrefix(entry pathEntry, isCursor bool) string {
+	// First char: modification state (priority: deleted > added > modified)
+	var prefix string
+	if entry.deleted {
+		prefix = ansiRed + "-" + ansiReset
+	} else if entry.added {
+		prefix = ansiGreen + "+" + ansiReset
+	} else if entry.modified {
+		prefix = ansiRed + "*" + ansiReset
+	} else {
+		prefix = " "
+	}
+
+	// Second char: cursor or exists indicator
+	if isCursor {
+		if !entry.exists {
+			prefix += ansiBlue + ">" + ansiReset
+		} else {
+			prefix += ">"
+		}
+	} else if !entry.exists {
+		prefix += ansiBlue + "?" + ansiReset
+	} else {
+		prefix += " "
+	}
+	return prefix
+}
+
+// renderEntryStyle returns ANSI style codes for an entry based on its state
+func renderEntryStyle(entry pathEntry) (style string, needsReset bool) {
+	if entry.deleted && entry.source == "system" {
+		return ansiRed + ansiBgRed, true
+	} else if entry.deleted {
+		return ansiRed, true
+	} else if entry.added && entry.source == "system" {
+		return ansiGreen + ansiBgGreen, true
+	} else if entry.added {
+		return ansiGreen, true
+	} else if entry.source == "system" {
+		return ansiBold + ansiBgGrey, true
+	}
+	return "", false
+}
+
+// renderHelpBar returns the help bar text for the main view
+func renderHelpBar(registryMode bool, width int) string {
+	var addHelp string
+	if registryMode {
+		addHelp = "a/A: add user/system"
+	} else {
+		addHelp = "a: add"
+	}
+	helpBar := " Tab: edit | " + addHelp + " | c: clean | Del: delete | q: quit"
+	if len(helpBar) > width {
+		helpBar = helpBar[:width-3] + "..."
+	}
+	return helpBar
+}
+
 func (m model) View() string {
 	var b strings.Builder
 
 	// If browser is active, render it instead of the path list
 	if m.browser != nil {
 		b.WriteString(m.browser.View(m.viewWidth))
-		helpBar := " Enter: open | a-z: jump | Tab: select | Esc: cancel"
+		helpBar := " Enter: open | a-z/A-Z: jump fwd/back | Tab: select | Esc: cancel"
 		if len(helpBar) > m.viewWidth {
 			helpBar = helpBar[:m.viewWidth-3] + "..."
 		}
@@ -23,30 +83,7 @@ func (m model) View() string {
 	// Render visible paths with scrollbar
 	for i := start; i < end; i++ {
 		entry := m.paths[i]
-
-		// Build cursor/marker prefix: [modified marker][cursor/exists marker]
-		// Priority: deleted > added > modified
-		var prefix string
-		if entry.deleted {
-			prefix = ansiRed + "-" + ansiReset // red - for deleted entries
-		} else if entry.added {
-			prefix = ansiGreen + "+" + ansiReset // green + for added entries
-		} else if entry.modified {
-			prefix = ansiRed + "*" + ansiReset // red asterisk for modified
-		} else {
-			prefix = " "
-		}
-		if i == m.list.cursor {
-			if !entry.exists {
-				prefix += ansiBlue + ">" + ansiReset // blue cursor for non-existent
-			} else {
-				prefix += ">"
-			}
-		} else if !entry.exists {
-			prefix += ansiBlue + "?" + ansiReset // blue ? for non-existent paths
-		} else {
-			prefix += " "
-		}
+		prefix := renderEntryPrefix(entry, i == m.list.cursor)
 		path := entry.path
 		pathRunes := []rune(path)
 		pathLen := len(pathRunes)
@@ -90,24 +127,8 @@ func (m model) View() string {
 		if hasLeft {
 			line.WriteString(ansiGreen + "<" + ansiReset)
 		}
-		// Style based on state: deleted > added > normal
-		needsReset := false
-		if entry.deleted && entry.source == "system" {
-			line.WriteString(ansiRed + ansiBgRed) // red text, light red background
-			needsReset = true
-		} else if entry.deleted {
-			line.WriteString(ansiRed) // just red text for user entries
-			needsReset = true
-		} else if entry.added && entry.source == "system" {
-			line.WriteString(ansiGreen + ansiBgGreen) // green text, light green background
-			needsReset = true
-		} else if entry.added {
-			line.WriteString(ansiGreen) // just green text for user entries
-			needsReset = true
-		} else if entry.source == "system" {
-			line.WriteString(ansiBold + ansiBgGrey) // bold + dark grey background
-			needsReset = true
-		}
+		style, needsReset := renderEntryStyle(entry)
+		line.WriteString(style)
 		line.WriteString(visiblePath)
 		if needsReset {
 			line.WriteString(ansiReset)
@@ -158,17 +179,7 @@ func (m model) View() string {
 	if m.prompt != nil {
 		b.WriteString(m.prompt.View())
 	} else {
-		var addHelp string
-		if m.registryMode {
-			addHelp = "a/A: add user/system"
-		} else {
-			addHelp = "a: add"
-		}
-		helpBar := " Tab: edit | " + addHelp + " | c: clean | Del: delete | q: quit"
-		if len(helpBar) > m.viewWidth {
-			helpBar = helpBar[:m.viewWidth-3] + "..."
-		}
-		b.WriteString(helpBar)
+		b.WriteString(renderHelpBar(m.registryMode, m.viewWidth))
 	}
 
 	return b.String()
