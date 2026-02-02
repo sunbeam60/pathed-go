@@ -33,6 +33,11 @@ A spartan TUI for editing your PATH environment variable.
 
 Download the latest release from the [releases page](https://github.com/sunbeam60/pathed-go/releases).
 
+Or use [eget](https://github.com/zyedidia/eget) and do 
+```bash
+eget sunbeam60/pathed-go
+```
+
 ### macOS Note
 
 macOS binaries are unsigned. On first run, you may see a Gatekeeper warning. To bypass:
