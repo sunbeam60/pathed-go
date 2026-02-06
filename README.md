@@ -1,6 +1,6 @@
 # pathed
 
-A spartan TUI for editing your PATH environment variable.
+A spartan, cross-platform TUI for editing your PATH environment variable.
 
 ![pathed screenshot](https://github.com/user-attachments/assets/43815fb6-355c-4069-84f2-560dd49a6881)
 
