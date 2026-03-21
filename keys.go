@@ -23,6 +23,7 @@ const (
 	keyMoveDn    = "shift+down"
 	keyMoveDnAlt = "J"
 	keyDelete    = "delete"
+	keyDeleteAlt = "d"
 	keyEnter     = "enter"
 	keyEsc       = "esc"
 	keySelect    = "tab"

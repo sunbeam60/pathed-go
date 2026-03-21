@@ -205,7 +205,7 @@ func (m model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.paths[m.list.cursor].modified = true // mark the moved entry (now at new position)
 		}
 
-	case keyDelete:
+	case keyDelete, keyDeleteAlt:
 		// Toggle deleted state on current entry
 		m.paths[m.list.cursor].deleted = !m.paths[m.list.cursor].deleted
 
@@ -241,13 +241,11 @@ func (m model) updateMain(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// Check for non-existing path
 			if !p.exists {
 				p.deleted = true
-				p.modified = true
 			}
 			// Check for duplicate (within same source in registry mode, globally in env mode)
 			normalizedPath := normalizePath(p.path)
 			if seen[p.source][normalizedPath] {
 				p.deleted = true
-				p.modified = true
 			}
 			seen[p.source][normalizedPath] = true
 		}

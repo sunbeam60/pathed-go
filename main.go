@@ -61,7 +61,7 @@ KEY BINDINGS:
     a                Add PATH entry (user entry in registry mode)
     A                Add system PATH entry (registry mode only)
     c                Clean (mark duplicates & missing for deletion)
-    Del              Toggle delete mark
+    Del / d          Toggle delete mark
     q                Quit (prompts if changes exist)
     Ctrl+C           Force quit
 

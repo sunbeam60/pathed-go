@@ -55,7 +55,7 @@ func renderHelpBar(registryMode bool, width int) string {
 	} else {
 		addHelp = "a: add"
 	}
-	helpBar := " Tab: edit | " + addHelp + " | c: clean | Del: delete | q: quit | ?: help"
+	helpBar := " Tab: edit | " + addHelp + " | c: clean | d: delete | q: quit | ?: help"
 	if len(helpBar) > width {
 		helpBar = helpBar[:width-3] + "..."
 	}
