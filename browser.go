@@ -82,8 +82,12 @@ func findValidStartDir(path string) string {
 	return "/"
 }
 
-// findFirstDrive finds the first available drive letter on Windows
+// findFirstDrive finds the first available drive letter on Windows.
+// On non-Windows platforms, returns the filesystem root.
 func findFirstDrive() string {
+	if !supportsRegistry {
+		return "/"
+	}
 	for c := 'C'; c <= 'Z'; c++ {
 		drive := string(c) + ":\\"
 		if info, err := os.Stat(drive); err == nil && info.IsDir() {
