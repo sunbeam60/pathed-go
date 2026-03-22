@@ -48,6 +48,9 @@ func newBrowserForAdd(source string, height int) *browser {
 // findValidStartDir walks up the path until it finds an existing directory.
 // If no valid directory is found (e.g., drive doesn't exist), returns the first available drive.
 func findValidStartDir(path string) string {
+	// Expand %VAR% environment variables so paths like %SYSTEMROOT%\system32 resolve
+	path = expandEnvVars(path)
+
 	// Try the path itself
 	if info, err := os.Stat(path); err == nil && info.IsDir() {
 		return path

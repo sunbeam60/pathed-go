@@ -5,9 +5,35 @@ import (
 	"strings"
 )
 
-// dirExists checks if a directory exists
+// expandEnvVars expands Windows-style %VAR% environment variable references in a string.
+func expandEnvVars(s string) string {
+	var result strings.Builder
+	i := 0
+	for i < len(s) {
+		if s[i] == '%' {
+			j := strings.Index(s[i+1:], "%")
+			if j == -1 {
+				result.WriteString(s[i:])
+				break
+			}
+			varName := s[i+1 : i+1+j]
+			if val := os.Getenv(varName); val != "" {
+				result.WriteString(val)
+			} else {
+				result.WriteString(s[i : i+2+j])
+			}
+			i = i + 2 + j
+		} else {
+			result.WriteByte(s[i])
+			i++
+		}
+	}
+	return result.String()
+}
+
+// dirExists checks if a directory exists, expanding any %VAR% environment variables first.
 func dirExists(path string) bool {
-	info, err := os.Stat(path)
+	info, err := os.Stat(expandEnvVars(path))
 	return err == nil && info.IsDir()
 }
 
