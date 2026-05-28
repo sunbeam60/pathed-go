@@ -30,6 +30,10 @@ A spartan, cross-platform TUI for editing your PATH environment variable.
   - Elevation detection with warning when running without Administrator privileges
 
 ## Installation
+### Windows
+```powershell
+winget install sunbeam60.pathed
+```
 
 Download the latest release from the [releases page](https://github.com/sunbeam60/pathed-go/releases).
 
@@ -38,7 +42,13 @@ Or use [eget](https://github.com/zyedidia/eget) and do
 eget sunbeam60/pathed-go
 ```
 
-### macOS Note
+### macOS & Linux
+Download the latest release from the [releases page](https://github.com/sunbeam60/pathed-go/releases).
+
+Or use [eget](https://github.com/zyedidia/eget) and do 
+```bash
+eget sunbeam60/pathed-go
+```
 
 macOS binaries are unsigned. On first run, you may see a Gatekeeper warning. To bypass:
 - Right-click the binary and select "Open", then click "Open" in the dialog
